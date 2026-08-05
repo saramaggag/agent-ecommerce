@@ -1,0 +1,242 @@
+[
+  {
+    "id": 1,
+    "nom": "T-shirt Marocain",
+    "categorie": "t-shirt",
+    "prix": 35.0,
+    "couleurs": [
+      "blanc",
+      "noir",
+      "vert"
+    ],
+    "tailles": [
+      "XS",
+      "S",
+      "M",
+      "L"
+    ],
+    "stock_par_variante": {
+      "XS": 12,
+      "S": 9,
+      "M": 7,
+      "L": 6
+    },
+    "description": "Un t-shirt de qualité avec une illustration marocaine. Fabriqué à Marrakech, pour un confort et un style unique."
+  },
+  {
+    "id": 2,
+    "nom": "Jean Marocain",
+    "categorie": "jean",
+    "prix": 105.0,
+    "couleurs": [
+      "rouge",
+      "jaune",
+      "bleu"
+    ],
+    "tailles": [
+      "XS",
+      "S",
+      "M",
+      "L"
+    ],
+    "stock_par_variante": {
+      "XS": 8,
+      "S": 6,
+      "M": 5,
+      "L": 4
+    },
+    "description": "Un jean marocain en denim. Design moderne et confortable avec une touche de tradition marocaine."
+  },
+  {
+    "id": 3,
+    "nom": "Robe Marocaine",
+    "categorie": "robe",
+    "prix": 150.0,
+    "couleurs": [
+      "bleu",
+      "rose",
+      "jaune"
+    ],
+    "tailles": [
+      "XS",
+      "S",
+      "M",
+      "L"
+    ],
+    "stock_par_variante": {
+      "XS": 7,
+      "S": 6,
+      "M": 5,
+      "L": 4
+    },
+    "description": "Une robe marocaine avec une ceinture en cuir. Très chic pour les occasions spéciales et confortable."
+  },
+  {
+    "id": 4,
+    "nom": "Veste en Cuir Atlas",
+    "categorie": "veste",
+    "prix": 95.0,
+    "couleurs": [
+      "noir",
+      "rouge",
+      "blanc"
+    ],
+    "tailles": [
+      "XS",
+      "S",
+      "M",
+      "L"
+    ],
+    "stock_par_variante": {
+      "XS": 10,
+      "S": 8,
+      "M": 7,
+      "L": 6
+    },
+    "description": "Une veste en cuir confortable pour les jours frais, avec une touche de style marocain."
+  },
+  {
+    "id": 5,
+    "nom": "Pull en Laine Atlas",
+    "categorie": "pull",
+    "prix": 80.0,
+    "couleurs": [
+      "bleu",
+      "vert",
+      "jaune"
+    ],
+    "tailles": [
+      "XS",
+      "S",
+      "M",
+      "L"
+    ],
+    "stock_par_variante": {
+      "XS": 15,
+      "S": 12,
+      "M": 9,
+      "L": 8
+    },
+    "description": "Un pull en laine marocaine. Un accessoire chic et confortable pour les jours plus froids."
+  },
+  {
+    "id": 6,
+    "nom": "Chemise Charme",
+    "categorie": "chemise",
+    "prix": 20.0,
+    "couleurs": [
+      "bleu",
+      "noir",
+      "rose"
+    ],
+    "tailles": [
+      "XS",
+      "S",
+      "M",
+      "L"
+    ],
+    "stock_par_variante": {
+      "XS": 18,
+      "S": 15,
+      "M": 12,
+      "L": 9
+    },
+    "description": "Une chemise marocaine avec des touches de couleur. Pas chère, mais toujours en vogue."
+  },
+  {
+    "id": 7,
+    "nom": "Short Marocain",
+    "categorie": "short",
+    "prix": 35.0,
+    "couleurs": [
+      "bleu",
+      "vert",
+      "rose"
+    ],
+    "tailles": [
+      "XS",
+      "S",
+      "M",
+      "L"
+    ],
+    "stock_par_variante": {
+      "XS": 14,
+      "S": 10,
+      "M": 7,
+      "L": 6
+    },
+    "description": "Un short marocain en toile. Pratique pour les journées plus chaudes."
+  },
+  {
+    "id": 8,
+    "nom": "Jupe Marocaine",
+    "categorie": "jupe",
+    "prix": 75.0,
+    "couleurs": [
+      "noir",
+      "blanc",
+      "rose"
+    ],
+    "tailles": [
+      "XS",
+      "S",
+      "M",
+      "L"
+    ],
+    "stock_par_variante": {
+      "XS": 12,
+      "S": 9,
+      "M": 6,
+      "L": 4
+    },
+    "description": "Une jupe marocaine avec un look traditionnel. Très jolie et élégante."
+  },
+  {
+    "id": 9,
+    "nom": "Veste Casual Marrakech",
+    "categorie": "veste",
+    "prix": 120.0,
+    "couleurs": [
+      "noir",
+      "rouge",
+      "vert"
+    ],
+    "tailles": [
+      "XS",
+      "S",
+      "M",
+      "L"
+    ],
+    "stock_par_variante": {
+      "XS": 8,
+      "S": 6,
+      "M": 4,
+      "L": 2
+    },
+    "description": "Une veste élégante pour les occasions prestigieuses, confortable au quotidien."
+  },
+  {
+    "id": 10,
+    "nom": "T-shirt Basic Atlas",
+    "categorie": "t-shirt",
+    "prix": 25.0,
+    "couleurs": [
+      "bleu",
+      "noir",
+      "vert"
+    ],
+    "tailles": [
+      "XS",
+      "S",
+      "M",
+      "L"
+    ],
+    "stock_par_variante": {
+      "XS": 16,
+      "S": 13,
+      "M": 10,
+      "L": 7
+    },
+    "description": "Un t-shirt basique avec une illustration moderne. Pas cher, mais toujours à la mode."
+  }
+]

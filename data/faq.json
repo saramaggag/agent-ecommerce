@@ -1,0 +1,127 @@
+[
+  {
+    "question": "Quels sont les délais de livraison ?",
+    "reponse": "La livraison prend entre 2 et 4 jours ouvrables pour les grandes villes (Casablanca, Rabat, Marrakech) et jusqu'à 6 jours pour les autres régions.",
+    "categorie": "livraison"
+  },
+  {
+    "question": "Livrez-vous partout au Maroc ?",
+    "reponse": "Oui, nous livrons dans toutes les villes du Maroc via nos partenaires de livraison.",
+    "categorie": "livraison"
+  },
+  {
+    "question": "Quels sont les frais de livraison ?",
+    "reponse": "La livraison est gratuite à partir de 500 MAD d'achat. En dessous, des frais de 30 MAD s'appliquent.",
+    "categorie": "livraison"
+  },
+  {
+    "question": "Puis-je suivre ma commande ?",
+    "reponse": "Oui, un numéro de suivi vous est envoyé par SMS et email dès l'expédition de votre commande.",
+    "categorie": "livraison"
+  },
+  {
+    "question": "Livrez-vous à l'étranger ?",
+    "reponse": "Pour le moment, nous livrons uniquement au Maroc.",
+    "categorie": "livraison"
+  },
+  {
+    "question": "Quels moyens de paiement acceptez-vous ?",
+    "reponse": "Nous acceptons le paiement à la livraison (cash), la carte bancaire et les virements via CIH Pay et Payzone.",
+    "categorie": "paiement"
+  },
+  {
+    "question": "Le paiement en ligne est-il sécurisé ?",
+    "reponse": "Oui, tous les paiements par carte sont cryptés et sécurisés via notre partenaire de paiement.",
+    "categorie": "paiement"
+  },
+  {
+    "question": "Puis-je payer en plusieurs fois ?",
+    "reponse": "Le paiement en plusieurs fois n'est pas encore disponible, mais nous y travaillons.",
+    "categorie": "paiement"
+  },
+  {
+    "question": "Ai-je une facture après mon achat ?",
+    "reponse": "Oui, une facture électronique vous est automatiquement envoyée par email après validation de votre commande.",
+    "categorie": "paiement"
+  },
+  {
+    "question": "Que faire si mon paiement échoue ?",
+    "reponse": "Vérifiez vos informations bancaires et réessayez. Si le problème persiste, contactez notre service client.",
+    "categorie": "paiement"
+  },
+  {
+    "question": "Puis-je retourner un article ?",
+    "reponse": "Oui, vous disposez de 14 jours après réception pour retourner un article non porté et dans son emballage d'origine.",
+    "categorie": "retours"
+  },
+  {
+    "question": "Comment échanger une taille ?",
+    "reponse": "Contactez notre service client avec votre numéro de commande, nous organisons l'échange gratuitement.",
+    "categorie": "retours"
+  },
+  {
+    "question": "Le retour est-il gratuit ?",
+    "reponse": "Oui, les frais de retour sont pris en charge par Atlas Wear pour tout défaut ou erreur de notre part.",
+    "categorie": "retours"
+  },
+  {
+    "question": "Sous combien de temps suis-je remboursée ?",
+    "reponse": "Le remboursement est effectué sous 5 à 7 jours ouvrables après réception de l'article retourné.",
+    "categorie": "retours"
+  },
+  {
+    "question": "Puis-je retourner un article soldé ?",
+    "reponse": "Les articles soldés ne sont pas remboursables mais peuvent être échangés contre une autre taille.",
+    "categorie": "retours"
+  },
+  {
+    "question": "Comment choisir ma taille ?",
+    "reponse": "Un guide des tailles détaillé est disponible sur chaque fiche produit avec les mesures en centimètres.",
+    "categorie": "tailles"
+  },
+  {
+    "question": "Les tailles sont-elles standards ?",
+    "reponse": "Nos tailles suivent le standard européen (XS à XL). En cas de doute, prenez la taille au-dessus.",
+    "categorie": "tailles"
+  },
+  {
+    "question": "Que faire si un produit n'est plus dispo dans ma taille ?",
+    "reponse": "Vous pouvez activer une alerte de réapprovisionnement directement sur la fiche produit.",
+    "categorie": "tailles"
+  },
+  {
+    "question": "Comment suivre ma commande ?",
+    "reponse": "Rendez-vous dans la rubrique 'Mes commandes' avec votre numéro de commande, ou donnez-le-moi directement en chat.",
+    "categorie": "suivi_commande"
+  },
+  {
+    "question": "Ma commande est en retard, que faire ?",
+    "reponse": "Si le délai annoncé est dépassé de plus de 2 jours, contactez notre service client avec votre numéro de commande.",
+    "categorie": "suivi_commande"
+  },
+  {
+    "question": "Puis-je annuler ma commande ?",
+    "reponse": "Oui, tant que la commande n'a pas encore été expédiée. Contactez-nous rapidement avec votre numéro de commande.",
+    "categorie": "suivi_commande"
+  },
+  {
+    "question": "Comment modifier mon adresse de livraison ?",
+    "reponse": "Contactez-nous avant l'expédition avec votre numéro de commande pour mettre à jour l'adresse.",
+    "categorie": "suivi_commande"
+  },
+  {
+    "question": "Quels sont vos horaires du service client ?",
+    "reponse": "Notre équipe est disponible du lundi au samedi, de 9h à 19h.",
+    "categorie": "general"
+  },
+  {
+    "question": "Proposez-vous des vêtements pour hommes et femmes ?",
+    "reponse": "Oui, notre catalogue couvre les collections homme et femme.",
+    "categorie": "general"
+  },
+  {
+    "question": "Comment vous contacter directement ?",
+    "reponse": "Vous pouvez nous écrire ici, sur WhatsApp, ou via Instagram — nous répondons sur les trois canaux.",
+    "categorie": "general"
+  }
+]
