@@ -1,12 +1,42 @@
 import ollama
 import psycopg2
+import chromadb
+from chromadb.utils import embedding_functions
 
+# --- Connexion PostgreSQL ---
 def get_connection():
     return psycopg2.connect(
         host="localhost", port=5432, dbname="atlas_wear",
         user="postgres", password="sara2003"
     )
 
+# --- Connexion ChromaDB ---
+ollama_ef = embedding_functions.OllamaEmbeddingFunction(
+    url="http://localhost:11434/api/embeddings",
+    model_name="nomic-embed-text",
+)
+chroma_client = chromadb.PersistentClient(path="./chroma_data")
+produits_collection = chroma_client.get_collection(name="produits", embedding_function=ollama_ef)
+faq_collection = chroma_client.get_collection(name="faq", embedding_function=ollama_ef)
+
+SEUIL_RAG = 0.32  # calibré avec calibrer_rag.py
+
+def rechercher_rag(question):
+    """Cherche dans les deux collections, retourne le meilleur résultat si assez pertinent."""
+    res_p = produits_collection.query(query_texts=[question], n_results=1)
+    res_f = faq_collection.query(query_texts=[question], n_results=1)
+
+    dist_p = res_p["distances"][0][0]
+    dist_f = res_f["distances"][0][0]
+
+    if dist_p <= dist_f and dist_p < SEUIL_RAG:
+        return res_p["documents"][0][0], dist_p
+    elif dist_f < SEUIL_RAG:
+        return res_f["documents"][0][0], dist_f
+    else:
+        return None, min(dist_p, dist_f)
+
+# --- Outil 1 : consulter_stock ---
 def consulter_stock(produit, taille):
     conn = get_connection()
     cur = conn.cursor()
@@ -25,6 +55,7 @@ def consulter_stock(produit, taille):
     conn.close()
     return resultat[0] if resultat and resultat[0] is not None else 0
 
+# --- Outil 2 : suivre_commande ---
 def suivre_commande(numero_commande):
     conn = get_connection()
     cur = conn.cursor()
@@ -53,6 +84,7 @@ def suivre_commande(numero_commande):
     statut_clair = statuts_clairs.get(statut, statut)
     return f"Commande #{id_cmd} pour {nom_client} : {statut_clair}. Montant : {montant} MAD. Passée le {date_creation.strftime('%d/%m/%Y')}."
 
+# --- Outil 3 : escalader_humain ---
 def escalader_humain(raison):
     with open("escalades.log", "a", encoding="utf-8") as f:
         f.write(f"[ESCALADE] Raison : {raison}\n")
@@ -111,18 +143,43 @@ fonctions_disponibles = {
 }
 
 def repondre(question_client):
+    # --- Étape 1 : RAG toujours actif (Option A) ---
+    contexte_rag, distance = rechercher_rag(question_client)
+    print(f"[DEBUG] Recherche RAG : distance={distance:.3f} | contexte={'trouvé' if contexte_rag else 'aucun'}")
+
+    system_content = (
+        "Tu es l'assistant du service client d'Atlas Wear. "
+        "Pour toute question sur le stock/disponibilité, utilise consulter_stock. "
+        "Pour toute question sur le statut d'une commande, utilise suivre_commande. "
+        "Pour toute autre question que tu ne peux pas traiter avec certitude, utilise escalader_humain. "
+    )
+
+    if contexte_rag:
+        system_content += (
+            f"Voici une information pertinente trouvée dans notre base de connaissances : \"{contexte_rag}\". "
+            "Si elle répond à la question, réponds directement en te basant STRICTEMENT dessus, sans appeler d'outil. "
+        )
+
+    system_content += (
+        "N'invente JAMAIS de détails supplémentaires (délais, promesses, canaux de contact) absents du contexte ou du résultat d'outil. "
+        "Reste bref : 1 à 2 phrases. Ne mentionne jamais les outils au client."
+    )
+
     messages = [
-        {"role": "system", "content": "Tu es l'assistant du service client d'Atlas Wear. Tu DOIS toujours répondre en appelant un des trois outils : consulter_stock pour le stock, suivre_commande pour une commande, escalader_humain pour tout le reste. Après le résultat de l'outil, réponds en 1 à 2 phrases naturelles, basées STRICTEMENT sur ce résultat. N'ajoute AUCUN mot vague non présent dans le résultat (pas de 'rapidement', 'bientôt', 'sous peu', pas de délais ou promesses inventés). Ne mentionne jamais les outils au client."},
+        {"role": "system", "content": system_content},
         {"role": "user", "content": question_client}
     ]
 
     reponse = ollama.chat(model="qwen2.5:3b", messages=messages, tools=outils, options={"temperature": 0})
 
-    # --- Filet de sécurité : si le LLM n'a demandé aucun outil, on force l'escalade nous-mêmes ---
+    # --- Filet de sécurité : si aucun outil ET aucun contexte RAG fiable -> escalade forcée ---
     if not reponse.message.tool_calls:
-        print("[DEBUG] Aucun outil demandé par le LLM -> escalade forcée par le code")
-        resultat = escalader_humain(f"Question hors périmètre non traitée automatiquement : {question_client}")
-        return resultat
+        if contexte_rag:
+            # Le LLM a répondu directement en s'appuyant sur le RAG, comportement autorisé
+            return reponse.message.content
+        else:
+            print("[DEBUG] Aucun outil ET aucun contexte RAG -> escalade forcée par le code")
+            return escalader_humain(f"Question hors périmètre : {question_client}")
 
     appel = reponse.message.tool_calls[0]
     nom_fonction = appel.function.name
@@ -143,6 +200,7 @@ if __name__ == "__main__":
     questions = [
         "Il reste des jeans en L ?",
         "Où en est ma commande numéro 1 ?",
+        "Comment retourner un article ?",
         "Est-ce que vous vendez aussi des chaussures de sport ?"
     ]
     for q in questions:
