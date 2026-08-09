@@ -53,6 +53,11 @@ def suivre_commande(numero_commande):
     statut_clair = statuts_clairs.get(statut, statut)
     return f"Commande #{id_cmd} pour {nom_client} : {statut_clair}. Montant : {montant} MAD. Passée le {date_creation.strftime('%d/%m/%Y')}."
 
+def escalader_humain(raison):
+    with open("escalades.log", "a", encoding="utf-8") as f:
+        f.write(f"[ESCALADE] Raison : {raison}\n")
+    return "Demande transmise à un conseiller humain, qui reprendra contact rapidement."
+
 outils = [
     {
         "type": "function",
@@ -82,44 +87,63 @@ outils = [
                 "required": ["numero_commande"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "escalader_humain",
+            "description": "Transfère la conversation à un conseiller humain quand la question sort du périmètre",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "raison": {"type": "string", "description": "Résumé court de pourquoi la question nécessite un humain"}
+                },
+                "required": ["raison"]
+            }
+        }
     }
 ]
 
 fonctions_disponibles = {
     "consulter_stock": consulter_stock,
-    "suivre_commande": suivre_commande
+    "suivre_commande": suivre_commande,
+    "escalader_humain": escalader_humain
 }
 
 def repondre(question_client):
     messages = [
-        {"role": "system", "content": "Tu es l'assistant du service client d'Atlas Wear, une boutique de vêtements marocaine. Réponds toujours de façon naturelle et chaleureuse, comme un vrai conseiller humain. Pour toute question sur la disponibilité/stock, utilise consulter_stock. Pour toute question sur le statut d'une commande, utilise suivre_commande. RÈGLE ABSOLUE : base ta réponse UNIQUEMENT sur le résultat exact retourné par l'outil. N'invente JAMAIS d'informations supplémentaires : pas de délais, pas de promesses (email, SMS, notification), pas de canaux de contact, pas de politiques qui ne sont pas explicitement dans le résultat de l'outil. Reste bref : 1 à 2 phrases maximum, reformulant uniquement les faits reçus. Si une information n'est pas disponible, dis simplement que tu ne l'as pas, ne la devine pas. Ne mentionne JAMAIS les outils, les fonctions, ou ta façon de travailler en interne."},
+        {"role": "system", "content": "Tu es l'assistant du service client d'Atlas Wear. Tu DOIS toujours répondre en appelant un des trois outils : consulter_stock pour le stock, suivre_commande pour une commande, escalader_humain pour tout le reste. Après le résultat de l'outil, réponds en 1 à 2 phrases naturelles, basées STRICTEMENT sur ce résultat. N'ajoute AUCUN mot vague non présent dans le résultat (pas de 'rapidement', 'bientôt', 'sous peu', pas de délais ou promesses inventés). Ne mentionne jamais les outils au client."},
         {"role": "user", "content": question_client}
     ]
 
     reponse = ollama.chat(model="qwen2.5:3b", messages=messages, tools=outils, options={"temperature": 0})
 
-    if reponse.message.tool_calls:
-        appel = reponse.message.tool_calls[0]
-        nom_fonction = appel.function.name
-        args = appel.function.arguments
-        print(f"[DEBUG] Le LLM demande : {nom_fonction}({args})")
+    # --- Filet de sécurité : si le LLM n'a demandé aucun outil, on force l'escalade nous-mêmes ---
+    if not reponse.message.tool_calls:
+        print("[DEBUG] Aucun outil demandé par le LLM -> escalade forcée par le code")
+        resultat = escalader_humain(f"Question hors périmètre non traitée automatiquement : {question_client}")
+        return resultat
 
-        fonction_reelle = fonctions_disponibles[nom_fonction]
-        resultat = fonction_reelle(**args)
-        print(f"[DEBUG] Résultat réel : {resultat}")
+    appel = reponse.message.tool_calls[0]
+    nom_fonction = appel.function.name
+    args = appel.function.arguments
+    print(f"[DEBUG] Le LLM demande : {nom_fonction}({args})")
 
-        messages.append({"role": "assistant", "content": "", "tool_calls": reponse.message.tool_calls})
-        messages.append({"role": "tool", "content": str(resultat)})
+    fonction_reelle = fonctions_disponibles[nom_fonction]
+    resultat = fonction_reelle(**args)
+    print(f"[DEBUG] Résultat réel : {resultat}")
 
-        reponse_finale = ollama.chat(model="qwen2.5:3b", messages=messages, options={"temperature": 0})
-        return reponse_finale.message.content
-    else:
-        return reponse.message.content
+    messages.append({"role": "assistant", "content": "", "tool_calls": reponse.message.tool_calls})
+    messages.append({"role": "tool", "content": str(resultat)})
+
+    reponse_finale = ollama.chat(model="qwen2.5:3b", messages=messages, options={"temperature": 0})
+    return reponse_finale.message.content
 
 if __name__ == "__main__":
     questions = [
         "Il reste des jeans en L ?",
-        "Où en est ma commande numéro 1 ?"
+        "Où en est ma commande numéro 1 ?",
+        "Est-ce que vous vendez aussi des chaussures de sport ?"
     ]
     for q in questions:
         print(f"\nClient : {q}")
