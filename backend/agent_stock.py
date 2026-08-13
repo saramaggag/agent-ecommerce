@@ -1,3 +1,4 @@
+import re
 import ollama
 import psycopg2
 import chromadb
@@ -22,34 +23,61 @@ faq_collection = chroma_client.get_collection(name="faq", embedding_function=oll
 SEUIL_RAG = 0.32  # calibré avec calibrer_rag.py
 
 def rechercher_rag(question):
-    """Cherche dans les deux collections, retourne le meilleur résultat si assez pertinent."""
-    res_p = produits_collection.query(query_texts=[question], n_results=1)
-    res_f = faq_collection.query(query_texts=[question], n_results=1)
+    """Cherche dans les deux collections, retourne le(s) meilleur(s) résultat(s) si assez pertinent(s)."""
+    res_p = produits_collection.query(query_texts=[question], n_results=5)
+    res_f = faq_collection.query(query_texts=[question], n_results=3)
 
     dist_p = res_p["distances"][0][0]
     dist_f = res_f["distances"][0][0]
 
     if dist_p <= dist_f and dist_p < SEUIL_RAG:
-        return res_p["documents"][0][0], dist_p
+        produits_pertinents = [
+            doc for doc, dist in zip(res_p["documents"][0], res_p["distances"][0])
+            if dist < SEUIL_RAG + 0.1
+        ]
+        contexte = "\n".join(produits_pertinents)
+        return contexte, dist_p
     elif dist_f < SEUIL_RAG:
-        return res_f["documents"][0][0], dist_f
+        faq_pertinentes = [
+            doc for doc, dist in zip(res_f["documents"][0], res_f["distances"][0])
+            if dist < SEUIL_RAG + 0.1
+        ]
+        contexte = "\n".join(faq_pertinentes)
+        return contexte, dist_f
     else:
         return None, min(dist_p, dist_f)
 
 # --- Outil 1 : consulter_stock ---
-def consulter_stock(produit, taille):
+def consulter_stock(produit, taille=None, couleur=None):
     conn = get_connection()
     cur = conn.cursor()
-    produit_normalise = produit.lower().rstrip("s")
-    cur.execute(
-        """
+
+    produit_propre = re.sub(r"\(.*?\)", "", produit)
+    produit_propre = re.sub(r"[^\w\s-]", " ", produit_propre)
+    mots = produit_propre.lower().split()
+    mots_utiles = [m.rstrip("s") for m in mots if m not in ("le", "la", "les", "un", "une", "des", "de") and len(m) > 2]
+
+    if not mots_utiles:
+        conn.close()
+        return 0
+
+    conditions = ["LOWER(p.nom) LIKE %s"]
+    params = [f"%{mots_utiles[0]}%"]
+
+    if taille:
+        conditions.append("UPPER(s.taille) = %s")
+        params.append(taille.upper())
+    if couleur:
+        conditions.append("LOWER(s.couleur) = %s")
+        params.append(couleur.lower())
+
+    requete = f"""
         SELECT SUM(s.quantite)
         FROM stock s
         JOIN produits p ON p.id = s.produit_id
-        WHERE LOWER(p.nom) LIKE %s AND UPPER(s.taille) = %s
-        """,
-        (f"%{produit_normalise}%", taille.upper())
-    )
+        WHERE {' AND '.join(conditions)}
+    """
+    cur.execute(requete, params)
     resultat = cur.fetchone()
     cur.close()
     conn.close()
@@ -95,14 +123,15 @@ outils = [
         "type": "function",
         "function": {
             "name": "consulter_stock",
-            "description": "Vérifie la quantité disponible d'un produit pour une taille donnée",
+            "description": "Vérifie la quantité disponible d'un produit, optionnellement pour une taille et/ou une couleur données",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "produit": {"type": "string", "description": "Le nom du produit, ex: jean"},
-                    "taille": {"type": "string", "description": "La taille, ex: L"}
+                    "produit": {"type": "string", "description": "UNIQUEMENT le type de vêtement en un mot simple, ex: jean, t-shirt, robe, jupe, pull, veste, chemise, short. Jamais de nom complet ni de parenthèses."},
+                    "taille": {"type": "string", "description": "La taille si mentionnée par le client (XS, S, M, L, XL). Ne pas inventer si non précisée."},
+                    "couleur": {"type": "string", "description": "La couleur si mentionnée par le client, ex: noir, bleu, rouge. Ne jamais mettre une couleur dans le champ taille."}
                 },
-                "required": ["produit", "taille"]
+                "required": ["produit"]
             }
         }
     },
@@ -143,26 +172,33 @@ fonctions_disponibles = {
 }
 
 def repondre(question_client):
-    # --- Étape 1 : RAG toujours actif (Option A) ---
     contexte_rag, distance = rechercher_rag(question_client)
     print(f"[DEBUG] Recherche RAG : distance={distance:.3f} | contexte={'trouvé' if contexte_rag else 'aucun'}")
 
     system_content = (
         "Tu es l'assistant du service client d'Atlas Wear. "
-        "Pour toute question sur le stock/disponibilité, utilise consulter_stock. "
-        "Pour toute question sur le statut d'une commande, utilise suivre_commande. "
+        "RÈGLE IMPORTANTE : pour TOUTE question demandant une quantité, une disponibilité exacte, un stock précis, "
+        "ou combinant un produit avec une taille et/ou une couleur, tu DOIS TOUJOURS appeler l'outil consulter_stock, "
+        "même si des informations générales sur le produit sont déjà données ci-dessous. "
+        "Ne réponds JAMAIS toi-même en texte à ce type de question, et n'écris JAMAIS le nom d'un outil ou un appel de fonction dans ta réponse en texte. "
+        "Pour le statut d'une commande, utilise suivre_commande. "
         "Pour toute autre question que tu ne peux pas traiter avec certitude, utilise escalader_humain. "
+        "Si la question du client contient PLUSIEURS demandes différentes (ex: un produit ET une question de livraison), "
+        "appelle TOUS les outils nécessaires pour y répondre complètement, pas seulement le premier. "
     )
 
     if contexte_rag:
         system_content += (
-            f"Voici une information pertinente trouvée dans notre base de connaissances : \"{contexte_rag}\". "
-            "Si elle répond à la question, réponds directement en te basant STRICTEMENT dessus, sans appeler d'outil. "
+            f"Voici des informations générales trouvées dans notre base de connaissances (descriptions, politiques) : \"{contexte_rag}\". "
+            "Utilise ceci UNIQUEMENT pour des questions descriptives générales (ex: existence d'un produit, politique de retour), "
+            "JAMAIS pour répondre à une question de quantité ou stock précis — dans ce cas, utilise toujours consulter_stock. "
         )
 
     system_content += (
         "N'invente JAMAIS de détails supplémentaires (délais, promesses, canaux de contact) absents du contexte ou du résultat d'outil. "
-        "Reste bref : 1 à 2 phrases. Ne mentionne jamais les outils au client."
+        "Réponds à CHAQUE partie de la question du client. Reste bref. "
+        "RÈGLE ABSOLUE FINALE : ta réponse ne doit JAMAIS contenir les mots 'outil', 'fonction', 'consulter_stock', 'suivre_commande', ou toute mention de comment tu obtiens l'information — "
+        "parle uniquement du résultat, jamais du mécanisme."
     )
 
     messages = [
@@ -172,26 +208,25 @@ def repondre(question_client):
 
     reponse = ollama.chat(model="qwen2.5:3b", messages=messages, tools=outils, options={"temperature": 0})
 
-    # --- Filet de sécurité : si aucun outil ET aucun contexte RAG fiable -> escalade forcée ---
     if not reponse.message.tool_calls:
         if contexte_rag:
-            # Le LLM a répondu directement en s'appuyant sur le RAG, comportement autorisé
             return reponse.message.content
         else:
             print("[DEBUG] Aucun outil ET aucun contexte RAG -> escalade forcée par le code")
             return escalader_humain(f"Question hors périmètre : {question_client}")
 
-    appel = reponse.message.tool_calls[0]
-    nom_fonction = appel.function.name
-    args = appel.function.arguments
-    print(f"[DEBUG] Le LLM demande : {nom_fonction}({args})")
-
-    fonction_reelle = fonctions_disponibles[nom_fonction]
-    resultat = fonction_reelle(**args)
-    print(f"[DEBUG] Résultat réel : {resultat}")
-
     messages.append({"role": "assistant", "content": "", "tool_calls": reponse.message.tool_calls})
-    messages.append({"role": "tool", "content": str(resultat)})
+
+    for appel in reponse.message.tool_calls:
+        nom_fonction = appel.function.name
+        args = appel.function.arguments
+        print(f"[DEBUG] Le LLM demande : {nom_fonction}({args})")
+
+        fonction_reelle = fonctions_disponibles[nom_fonction]
+        resultat = fonction_reelle(**args)
+        print(f"[DEBUG] Résultat réel : {resultat}")
+
+        messages.append({"role": "tool", "content": str(resultat)})
 
     reponse_finale = ollama.chat(model="qwen2.5:3b", messages=messages, options={"temperature": 0})
     return reponse_finale.message.content
