@@ -1,3 +1,7 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 import re
 import ollama
 import psycopg2
@@ -8,7 +12,7 @@ from chromadb.utils import embedding_functions
 def get_connection():
     return psycopg2.connect(
         host="localhost", port=5432, dbname="atlas_wear",
-        user="postgres", password="sara2003"
+        user="postgres", password=os.getenv("DB_PASSWORD")
     )
 
 # --- Connexion ChromaDB ---
