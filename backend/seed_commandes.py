@@ -2,7 +2,7 @@ import psycopg2
 
 conn = psycopg2.connect(
     host="localhost", port=5432, dbname="atlas_wear",
-    user="postgres", password="sara2003"
+    user="postgres", password="sara2030"
 )
 cur = conn.cursor()
 

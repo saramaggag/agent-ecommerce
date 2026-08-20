@@ -11,13 +11,18 @@ from chromadb.utils import embedding_functions
 # --- Connexion PostgreSQL ---
 def get_connection():
     return psycopg2.connect(
-        host="localhost", port=5432, dbname="atlas_wear",
+        host=os.getenv("DB_HOST", "localhost"),
+        port=5432, dbname="atlas_wear",
         user="postgres", password=os.getenv("DB_PASSWORD")
     )
 
-# --- Connexion ChromaDB ---
+# --- Connexion Ollama (embeddings + génération) ---
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+
+ollama_client = ollama.Client(host=OLLAMA_URL)
+
 ollama_ef = embedding_functions.OllamaEmbeddingFunction(
-    url="http://localhost:11434/api/embeddings",
+    url=f"{OLLAMA_URL}/api/embeddings",
     model_name="nomic-embed-text",
 )
 chroma_client = chromadb.PersistentClient(path="./chroma_data")
@@ -210,7 +215,7 @@ def repondre(question_client):
         {"role": "user", "content": question_client}
     ]
 
-    reponse = ollama.chat(model="qwen2.5:3b", messages=messages, tools=outils, options={"temperature": 0})
+    reponse = ollama_client.chat(model="qwen2.5:3b", messages=messages, tools=outils, options={"temperature": 0})
 
     if not reponse.message.tool_calls:
         if contexte_rag:
@@ -232,7 +237,7 @@ def repondre(question_client):
 
         messages.append({"role": "tool", "content": str(resultat)})
 
-    reponse_finale = ollama.chat(model="qwen2.5:3b", messages=messages, options={"temperature": 0})
+    reponse_finale = ollama_client.chat(model="qwen2.5:3b", messages=messages, options={"temperature": 0})
     return reponse_finale.message.content
 
 if __name__ == "__main__":
