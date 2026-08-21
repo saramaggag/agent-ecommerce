@@ -8,6 +8,19 @@ import psycopg2
 import chromadb
 from chromadb.utils import embedding_functions
 
+# --- Détection du mode : Groq (prod) ou Ollama (dev local) ---
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+MODE_PROD = bool(GROQ_API_KEY)
+
+if MODE_PROD:
+    from groq import Groq
+    groq_client = Groq(api_key=GROQ_API_KEY)
+    MODEL_NAME = "openai/gpt-oss-20b"
+else:
+    OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    ollama_client = ollama.Client(host=OLLAMA_URL)
+    MODEL_NAME = "qwen2.5:3b"
+
 # --- Connexion PostgreSQL ---
 def get_connection():
     return psycopg2.connect(
@@ -16,10 +29,8 @@ def get_connection():
         user="postgres", password=os.getenv("DB_PASSWORD")
     )
 
-# --- Connexion Ollama (embeddings + génération) ---
+# --- Connexion ChromaDB (embeddings toujours via Ollama pour l'instant) ---
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-
-ollama_client = ollama.Client(host=OLLAMA_URL)
 
 ollama_ef = embedding_functions.OllamaEmbeddingFunction(
     url=f"{OLLAMA_URL}/api/embeddings",
@@ -180,9 +191,23 @@ fonctions_disponibles = {
     "escalader_humain": escalader_humain
 }
 
+def appeler_llm(messages, avec_outils=True):
+    """Abstraction : appelle Groq ou Ollama selon le mode, retourne un objet avec .message.content et .message.tool_calls"""
+    if MODE_PROD:
+        kwargs = {"model": MODEL_NAME, "messages": messages, "temperature": 0}
+        if avec_outils:
+            kwargs["tools"] = outils
+        reponse = groq_client.chat.completions.create(**kwargs)
+        return reponse.choices[0]
+    else:
+        kwargs = {"model": MODEL_NAME, "messages": messages, "options": {"temperature": 0}}
+        if avec_outils:
+            kwargs["tools"] = outils
+        return ollama_client.chat(**kwargs)
+
 def repondre(question_client):
     contexte_rag, distance = rechercher_rag(question_client)
-    print(f"[DEBUG] Recherche RAG : distance={distance:.3f} | contexte={'trouvé' if contexte_rag else 'aucun'}")
+    print(f"[DEBUG] Mode: {'GROQ' if MODE_PROD else 'OLLAMA'} | Recherche RAG : distance={distance:.3f} | contexte={'trouvé' if contexte_rag else 'aucun'}")
 
     system_content = (
         "Tu es l'assistant du service client d'Atlas Wear. "
@@ -215,30 +240,40 @@ def repondre(question_client):
         {"role": "user", "content": question_client}
     ]
 
-    reponse = ollama_client.chat(model="qwen2.5:3b", messages=messages, tools=outils, options={"temperature": 0})
+    choix = appeler_llm(messages, avec_outils=True)
+    tool_calls = choix.message.tool_calls
 
-    if not reponse.message.tool_calls:
+    if not tool_calls:
         if contexte_rag:
-            return reponse.message.content
+            return choix.message.content
         else:
             print("[DEBUG] Aucun outil ET aucun contexte RAG -> escalade forcée par le code")
             return escalader_humain(f"Question hors périmètre : {question_client}")
 
-    messages.append({"role": "assistant", "content": "", "tool_calls": reponse.message.tool_calls})
+    messages.append({"role": "assistant", "content": choix.message.content or "", "tool_calls": tool_calls})
 
-    for appel in reponse.message.tool_calls:
+    for appel in tool_calls:
         nom_fonction = appel.function.name
+        # Groq retourne les arguments en JSON string, Ollama en dict direct
         args = appel.function.arguments
+        if isinstance(args, str):
+            import json
+            args = json.loads(args)
+
         print(f"[DEBUG] Le LLM demande : {nom_fonction}({args})")
 
         fonction_reelle = fonctions_disponibles[nom_fonction]
         resultat = fonction_reelle(**args)
         print(f"[DEBUG] Résultat réel : {resultat}")
 
-        messages.append({"role": "tool", "content": str(resultat)})
+        tool_call_id = getattr(appel, "id", None)
+        message_outil = {"role": "tool", "content": str(resultat)}
+        if tool_call_id:
+            message_outil["tool_call_id"] = tool_call_id
+        messages.append(message_outil)
 
-    reponse_finale = ollama_client.chat(model="qwen2.5:3b", messages=messages, options={"temperature": 0})
-    return reponse_finale.message.content
+    choix_final = appeler_llm(messages, avec_outils=False)
+    return choix_final.message.content
 
 if __name__ == "__main__":
     questions = [
