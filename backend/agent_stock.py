@@ -29,18 +29,23 @@ def get_connection():
         user="postgres", password=os.getenv("DB_PASSWORD")
     )
 
-# --- Connexion ChromaDB (embeddings toujours via Ollama pour l'instant) ---
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+# --- Connexion ChromaDB : embedding et dossier différents selon le mode ---
+if MODE_PROD:
+    embedding_fn = embedding_functions.DefaultEmbeddingFunction()
+    CHROMA_PATH = "./chroma_data_prod"
+else:
+    OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    embedding_fn = embedding_functions.OllamaEmbeddingFunction(
+        url=f"{OLLAMA_URL}/api/embeddings",
+        model_name="nomic-embed-text",
+    )
+    CHROMA_PATH = "./chroma_data"
 
-ollama_ef = embedding_functions.OllamaEmbeddingFunction(
-    url=f"{OLLAMA_URL}/api/embeddings",
-    model_name="nomic-embed-text",
-)
-chroma_client = chromadb.PersistentClient(path="./chroma_data")
-produits_collection = chroma_client.get_collection(name="produits", embedding_function=ollama_ef)
-faq_collection = chroma_client.get_collection(name="faq", embedding_function=ollama_ef)
+chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
+produits_collection = chroma_client.get_collection(name="produits", embedding_function=embedding_fn)
+faq_collection = chroma_client.get_collection(name="faq", embedding_function=embedding_fn)
 
-SEUIL_RAG = 0.32  # calibré avec calibrer_rag.py
+SEUIL_RAG = 0.95 if MODE_PROD else 0.32  # calibré séparément par modèle d'embedding (calibrer_rag.py / calibrer_rag_prod.py)
 
 def rechercher_rag(question):
     """Cherche dans les deux collections, retourne le(s) meilleur(s) résultat(s) si assez pertinent(s)."""
