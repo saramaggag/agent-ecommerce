@@ -1,12 +1,19 @@
+
+import os
 import psycopg2
+from dotenv import load_dotenv
+load_dotenv()
 
 conn = psycopg2.connect(
-    host="localhost", port=5432, dbname="atlas_wear",
-    user="postgres", password="sara2030"
+    host=os.getenv("DB_HOST", "localhost"),
+    port=5432,
+    dbname=os.getenv("DB_NAME", "atlas_wear"),
+    user=os.getenv("DB_USER", "postgres"),
+    password=os.getenv("DB_PASSWORD"),
+    sslmode=os.getenv("DB_SSLMODE", "prefer")
 )
 cur = conn.cursor()
 
-# --- Clients fictifs ---
 clients = [
     ("Sara Alaoui", "0612345678", "whatsapp"),
     ("Youssef Benali", "0623456789", "web"),
@@ -18,11 +25,9 @@ for nom, tel, canal in clients:
         (nom, tel, canal)
     )
 
-# --- Récupère les ids clients créés ---
 cur.execute("SELECT id FROM clients ORDER BY id")
 client_ids = [row[0] for row in cur.fetchall()]
 
-# --- Commandes fictives avec statuts variés ---
 commandes = [
     (client_ids[0], "expediee", 140.00),
     (client_ids[1], "en_attente", 75.00),
@@ -36,11 +41,10 @@ for client_id, statut, montant in commandes:
     )
     commande_ids.append(cur.fetchone()[0])
 
-# --- Quelques articles par commande ---
 items = [
-    (commande_ids[0], 2, 1, "M", "rouge"),   # commande 1 : 1 jean M rouge
-    (commande_ids[1], 8, 1, "S", "noir"),    # commande 2 : 1 jupe S noire
-    (commande_ids[2], 3, 1, "L", "bleu"),    # commande 3 : 1 robe L bleue
+    (commande_ids[0], 2, 1, "M", "rouge"),
+    (commande_ids[1], 8, 1, "S", "noir"),
+    (commande_ids[2], 3, 1, "L", "bleu"),
 ]
 for commande_id, produit_id, quantite, taille, couleur in items:
     cur.execute(

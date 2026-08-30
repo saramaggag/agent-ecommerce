@@ -1,12 +1,16 @@
+import os
 import json
 import psycopg2
+from dotenv import load_dotenv
+load_dotenv()
 
 conn = psycopg2.connect(
-    host="localhost",
+    host=os.getenv("DB_HOST", "localhost"),
     port=5432,
-    dbname="atlas_wear",
-    user="postgres",
-    password="sara2030"
+    dbname=os.getenv("DB_NAME", "atlas_wear"),
+    user=os.getenv("DB_USER", "postgres"),
+    password=os.getenv("DB_PASSWORD"),
+    sslmode=os.getenv("DB_SSLMODE", "prefer")
 )
 cur = conn.cursor()
 
