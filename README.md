@@ -170,6 +170,6 @@ Le cahier des charges complet du projet (contexte, spécifications, planning) es
 ## 👤 Auteure
 
 **Sara Maggag** — Data Scientist
-[GitHub](https://github.com/saramaggag) · [LinkedIn](https://www.linkedin.com/in/saramaggag)
+[GitHub](https://github.com/saramaggag) · [LinkedIn](#)
 
 Projet réalisé dans un objectif d'apprentissage intégré : combiner RAG, agent IA, backend, frontend, Docker et déploiement dans un seul projet réaliste plutôt que théoriquement séparé.
